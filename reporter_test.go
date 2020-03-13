@@ -37,3 +37,28 @@ func TestAggregateStats(t *testing.T) {
 		t.Error(cmp.Diff(got, want))
 	}
 }
+
+func TestLoadSites(t *testing.T) {
+	t.Parallel()
+	want := []reporter.Site{
+		{
+			Name:   "Nile.com",
+			URL:    "https://nile.com/home",
+			Sector: "Commerce",
+			ID:     28147,
+		},
+		{
+			Name:   "Wakandan Airlines",
+			URL:    "https://wakandanairlines.com/",
+			Sector: "Travel",
+			ID:     6923,
+		},
+	}
+	got, err := reporter.LoadSites("testdata/sites.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(got, want) {
+		t.Error(cmp.Diff(got, want))
+	}
+}
