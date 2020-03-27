@@ -1,6 +1,9 @@
 package reporter_test
 
 import (
+	"bytes"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	reporter "github.com/bitfield/uptime-reporter"
@@ -16,49 +19,146 @@ func TestReporter(t *testing.T) {
 	}
 }
 
-func TestAggregateStats(t *testing.T) {
+func TestStatsSummary(t *testing.T) {
 	t.Parallel()
-	input := []uptime.CheckStatsTotals{
+	tcs := []struct {
+		input []float64
+		want  reporter.Summary
+	}{
 		{
-			Outages:      1,
-			DowntimeSecs: 217,
+			input: []float64{1, 32, 16},
+			want: reporter.Summary{
+				Min:    1,
+				Max:    32,
+				Q1:     1,
+				Median: 16,
+				Q3:     32,
+			},
 		},
 		{
-			Outages:      16,
-			DowntimeSecs: 219,
+			input: []float64{168, 68, 255, 104, 244, 17, 237, 200, 189, 145},
+			want: reporter.Summary{
+				Min:    17,
+				Max:    255,
+				Q1:     104,
+				Median: 178.5,
+				Q3:     237,
+			},
 		},
 	}
-	want := uptime.CheckStatsTotals{
-		Outages:      17,
-		DowntimeSecs: 436,
-	}
-	got := reporter.AggregateStats(input)
-	if !cmp.Equal(got, want) {
-		t.Error(cmp.Diff(got, want))
+	for _, tc := range tcs {
+		got, err := reporter.StatsSummary(tc.input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !cmp.Equal(tc.want, got) {
+			t.Errorf("data: %v %s", tc.input, cmp.Diff(tc.want, got))
+		}
 	}
 }
 
-func TestLoadSites(t *testing.T) {
+func TestIDsFromChecks(t *testing.T) {
 	t.Parallel()
-	want := []reporter.Site{
+	input := []*uptime.Check{
 		{
-			Name:   "Nile.com",
-			URL:    "https://nile.com/home",
-			Sector: "Commerce",
-			ID:     28147,
+			PK:      28147,
+			Name:    "Nile.com",
+			Address: "https://nile.com",
+			Tags:    []string{"Commerce"},
 		},
 		{
-			Name:   "Wakandan Airlines",
-			URL:    "https://wakandanairlines.com/",
-			Sector: "Travel",
-			ID:     6923,
+			PK:      6923,
+			Name:    "Wakandan Airlines",
+			Address: "https://wakandanairlines.com",
+			Tags:    []string{"Travel"},
 		},
 	}
-	got, err := reporter.LoadSites("testdata/sites.json")
+	want := []int{28147, 6923}
+	got := reporter.IDsFromChecks(input)
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestSiteFromCheck(t *testing.T) {
+	t.Parallel()
+	inputCheck := uptime.Check{
+		PK:      6923,
+		Name:    "Wakandan Airlines",
+		Address: "https://wakandanairlines.com",
+		Tags:    []string{"Travel"},
+	}
+	inputStats := uptime.CheckStats{
+		Totals: uptime.CheckStatsTotals{
+			Outages:      4,
+			DowntimeSecs: 117,
+		},
+	}
+	want := reporter.Site{
+		ID:           6923,
+		Name:         "Wakandan Airlines",
+		URL:          "https://wakandanairlines.com",
+		Sector:       "Travel",
+		Outages:      4,
+		DowntimeSecs: 117,
+	}
+	got := reporter.SiteFromCheck(inputCheck, inputStats)
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestWriteCSV(t *testing.T) {
+	t.Parallel()
+	inputSite := reporter.Site{
+		Name:         "Wakandan Airlines",
+		URL:          "https://wakandanairlines.com",
+		Sector:       "Travel",
+		Outages:      4,
+		DowntimeSecs: 117,
+	}
+	wantFile, err := os.Open("testdata/test.csv")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cmp.Equal(got, want) {
-		t.Error(cmp.Diff(got, want))
+	defer wantFile.Close()
+	want, err := ioutil.ReadAll(wantFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := bytes.Buffer{}
+	err = reporter.WriteCSV(&got, inputSite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(want, got.Bytes()) {
+		t.Error(cmp.Diff(string(want), got.String()))
+	}
+}
+
+func TestReadCSV(t *testing.T) {
+	t.Parallel()
+	want := reporter.Site{
+		Name:         "Wakandan Airlines",
+		URL:          "https://wakandanairlines.com",
+		Sector:       "Travel",
+		Outages:      4,
+		DowntimeSecs: 117,
+	}
+	inFile, err := os.Open("testdata/test.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer inFile.Close()
+	sites, err := reporter.ReadCSV(inFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sites) < 1 {
+		t.Fatal("want 1 site, got 0")
+	}
+	got := sites[0]
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
 	}
 }
