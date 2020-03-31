@@ -71,14 +71,23 @@ func (r Reporter) GetSiteIDs() ([]int, error) {
 }
 
 type Summary struct {
-	Min, Max, Median, Q1, Q3 float64
+	Sum, Mean, Dev, Min, Max, Median, Q1, Q3 float64
 }
 
 func (s Summary) String() string {
-	return fmt.Sprintf("Min: %.1f Max: %.1f Median: %.1f Q1: %.1f Q3: %.1f", s.Min, s.Max, s.Median, s.Q1, s.Q3)
+	return fmt.Sprintf("Total %.1f Min %.1f Max %.1f Median %.1f Mean %.1f Standard deviation %.1f", s.Sum, s.Min, s.Max, s.Median, s.Mean, s.Dev)
 }
 
 func StatsSummary(input []float64) (Summary, error) {
+	sum, err := stats.Sum(input)
+	if err != nil {
+		return Summary{}, err
+	}
+	mean, err := stats.Mean(input)
+	if err != nil {
+		return Summary{}, err
+	}
+	dev, err := stats.StandardDeviation(input)
 	min, err := stats.Min(input)
 	if err != nil {
 		return Summary{}, err
@@ -92,6 +101,9 @@ func StatsSummary(input []float64) (Summary, error) {
 		return Summary{}, err
 	}
 	return Summary{
+		Sum:    sum,
+		Mean:   mean,
+		Dev:    dev,
 		Max:    max,
 		Min:    min,
 		Q1:     quartiles.Q1,
@@ -158,12 +170,12 @@ func ReadCSV(input io.Reader) ([]Site, error) {
 		}
 		outages, err := strconv.Atoi(record[3])
 		if err != nil {
-			return []Site{}, err
+			return []Site{}, fmt.Errorf("data line %q: %w", record, err)
 		}
 		s.Outages = outages
 		downtime, err := strconv.ParseInt(record[4], 10, 64)
 		if err != nil {
-			return []Site{}, err
+			return []Site{}, fmt.Errorf("data line %q: %w", record, err)
 		}
 		s.DowntimeSecs = downtime
 		sites = append(sites, s)

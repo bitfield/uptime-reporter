@@ -28,21 +28,27 @@ func TestStatsSummary(t *testing.T) {
 		{
 			input: []float64{1, 32, 16},
 			want: reporter.Summary{
+				Sum:    49,
 				Min:    1,
 				Max:    32,
 				Q1:     1,
 				Median: 16,
 				Q3:     32,
+				Mean:   16.333333333333332,
+				Dev:    12.657891697365017,
 			},
 		},
 		{
 			input: []float64{168, 68, 255, 104, 244, 17, 237, 200, 189, 145},
 			want: reporter.Summary{
+				Sum:    1627,
 				Min:    17,
 				Max:    255,
 				Q1:     104,
 				Median: 178.5,
 				Q3:     237,
+				Mean:   162.7,
+				Dev:    75.31009228516454,
 			},
 		},
 	}
