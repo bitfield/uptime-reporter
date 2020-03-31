@@ -14,10 +14,22 @@ import (
 	"github.com/uptime-com/rest-api-clients/golang/uptime"
 )
 
+// Reporter stores the Uptime.com client configuration.
 type Reporter struct {
 	client *uptime.Client
 }
 
+// Site represents metadata about an Uptime.com check, and can also store data
+// on its outages and downtime within a specified period.
+type Site struct {
+	ID                int
+	Name, URL, Sector string
+	Outages           int
+	DowntimeSecs      int64
+}
+
+// New takes an Uptime.com API token and returns a Reporter object which can
+// then be used to query the Uptime API.
 func New(APIToken string) (Reporter, error) {
 	client, err := uptime.NewClient(&uptime.Config{
 		Token:            APIToken,
@@ -29,6 +41,39 @@ func New(APIToken string) (Reporter, error) {
 	return Reporter{client}, nil
 }
 
+// GetSiteIDs returns a slice of check IDs, one for each check in the account
+// associated with the Reporter's API token.
+func (r Reporter) GetSiteIDs() ([]int, error) {
+	checks, err := r.client.Checks.ListAll(context.Background(), &uptime.CheckListOptions{PageSize: 1000})
+	if err != nil {
+		return []int{}, fmt.Errorf("listing all checks: %w", err)
+	}
+	IDs := make([]int, len(checks))
+	for i, c := range checks {
+		IDs[i] = c.PK
+	}
+	return IDs, nil
+}
+
+// GetDowntimes takes the ID of a check, and two time values indicating the
+// start and end of the period to query. It returns a Site object containing
+// metadata about the site, plus the number of outages in the period, and the
+// total amount of downtime in the period.
+func (r Reporter) GetDowntimes(ID int, start, end time.Time) (Site, error) {
+	stats, _, err := r.client.Checks.Stats(context.Background(), ID, start, end)
+	if err != nil {
+		return Site{}, err
+	}
+	check, _, err := r.client.Checks.Get(context.Background(), ID)
+	if err != nil {
+		return Site{}, err
+	}
+	return SiteFromCheck(*check, *stats), nil
+}
+
+// GetDowntimesWithRetry calls GetDowntimes for the given ID. If there is an API
+// rate limit error, it sleeps for five seconds and tries again, and keeps
+// trying forever.
 func (r Reporter) GetDowntimesWithRetry(ID int, start, end time.Time) (Site, error) {
 	for {
 		site, err := r.GetDowntimes(ID, start, end)
@@ -43,42 +88,20 @@ func (r Reporter) GetDowntimesWithRetry(ID int, start, end time.Time) (Site, err
 	}
 }
 
-func (r Reporter) GetDowntimes(ID int, start, end time.Time) (Site, error) {
-	stats, _, err := r.client.Checks.Stats(context.Background(), ID, start, end)
-	if err != nil {
-		return Site{}, err
-	}
-	check, _, err := r.client.Checks.Get(context.Background(), ID)
-	if err != nil {
-		return Site{}, err
-	}
-	return SiteFromCheck(*check, *stats), nil
-}
-
-type Site struct {
-	ID                int
-	Name, URL, Sector string
-	Outages           int
-	DowntimeSecs      int64
-}
-
-func (r Reporter) GetSiteIDs() ([]int, error) {
-	checks, err := r.client.Checks.ListAll(context.Background(), &uptime.CheckListOptions{PageSize: 1000})
-	if err != nil {
-		return []int{}, fmt.Errorf("listing all checks: %w", err)
-	}
-	return IDsFromChecks(checks), nil
-}
-
+// Summary represents the statistical summary data for a group of Sites.
 type Summary struct {
 	Sum, Mean, Dev, Min, Max, Median, Q1, Q3 float64
 }
 
+// String returns a formatted version of the Summary data suitable for printing.
 func (s Summary) String() string {
 	return fmt.Sprintf("Total %.1f Min %.1f Max %.1f Median %.1f Mean %.1f Standard deviation %.1f", s.Sum, s.Min, s.Max, s.Median, s.Mean, s.Dev)
 }
 
-func StatsSummary(input []float64) (Summary, error) {
+// StatsSummary takes a dataset of floating-point values and calculates various
+// statistical values for them, returning a Summary object containing the
+// computed data.
+func StatsSummary(input stats.Float64Data) (Summary, error) {
 	sum, err := stats.Sum(input)
 	if err != nil {
 		return Summary{}, err
@@ -113,14 +136,8 @@ func StatsSummary(input []float64) (Summary, error) {
 
 }
 
-func IDsFromChecks(checks []*uptime.Check) []int {
-	IDs := make([]int, len(checks))
-	for i, c := range checks {
-		IDs[i] = c.PK
-	}
-	return IDs
-}
-
+// SiteFromCheck translates from an uptime.Check and uptime.CheckStats object to
+// a Site object containing the data from both objects.
 func SiteFromCheck(c uptime.Check, s uptime.CheckStats) Site {
 	site := Site{
 		ID:           c.PK,
@@ -135,6 +152,8 @@ func SiteFromCheck(c uptime.Check, s uptime.CheckStats) Site {
 	return site
 }
 
+// WriteCSV takes a Site object and prints a CSV-formatted version of it to the
+// supplied writer.
 func WriteCSV(output io.Writer, site Site) error {
 	w := csv.NewWriter(output)
 	record := []string{
@@ -152,6 +171,8 @@ func WriteCSV(output io.Writer, site Site) error {
 	return w.Error()
 }
 
+// ReadCSV reads CSV data representing a group of Sites, one per line, from the
+// given input.
 func ReadCSV(input io.Reader) ([]Site, error) {
 	var sites []Site
 	r := csv.NewReader(input)

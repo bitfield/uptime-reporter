@@ -63,29 +63,6 @@ func TestStatsSummary(t *testing.T) {
 	}
 }
 
-func TestIDsFromChecks(t *testing.T) {
-	t.Parallel()
-	input := []*uptime.Check{
-		{
-			PK:      28147,
-			Name:    "Nile.com",
-			Address: "https://nile.com",
-			Tags:    []string{"Commerce"},
-		},
-		{
-			PK:      6923,
-			Name:    "Wakandan Airlines",
-			Address: "https://wakandanairlines.com",
-			Tags:    []string{"Travel"},
-		},
-	}
-	want := []int{28147, 6923}
-	got := reporter.IDsFromChecks(input)
-	if !cmp.Equal(want, got) {
-		t.Error(cmp.Diff(want, got))
-	}
-}
-
 func TestSiteFromCheck(t *testing.T) {
 	t.Parallel()
 	inputCheck := uptime.Check{
