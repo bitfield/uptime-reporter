@@ -7,5 +7,3 @@ require (
 	github.com/montanaflynn/stats v0.6.3
 	github.com/uptime-com/rest-api-clients/golang v1.0.0
 )
-
-replace github.com/uptime-com/rest-api-clients/golang => /Users/john/git/uptime/rest-api-clients/golang
