@@ -30,10 +30,10 @@ func main() {
 		log.Fatal(err)
 	}
 	for _, ID := range IDs {
-		site, info, err := r.GetDowntimesWithRetry(ID, start, end)
+		site, err := r.GetDowntimesWithRetry(ID, start, end)
 		if err != nil {
 			log.Fatal(err)
 		}
-		reporter.WriteCSV(os.Stdout, site, info)
+		reporter.WriteCSV(os.Stdout, site)
 	}
 }
