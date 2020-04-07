@@ -20,10 +20,12 @@ export UPTIME_API_TOKEN="XXX"
 
 ## Downloading data
 
-Now you're ready to start downloading your check data. Run this command:
+Now you're ready to start downloading your check data. The downloader will fetch data for the period you specify, so you will need to specify the exact start and end times of this period in the following format: `YYYY-MM-DDTHH:MM:SSZ`.
+
+Run this command, substituting the start and end times of the period you're interested in:
 
 ```sh
-go run cmd/download/main.go |tee data.csv
+go run cmd/download/main.go 2019-01-01T00:00:00Z 2020-01-01T00:00:00Z |tee data.csv
 ```
 
 If all is well, you'll start to see CSV data printed out, one line for each of your checks:
@@ -51,9 +53,15 @@ go run cmd/analyse/main.go <data.csv
 You should see some output like this:
 
 ```
-Sector: Sites (128 sites)
-Outages: Total 38.0 Min 0.0 Max 3.0 Median 0.0 Mean 0.3 Standard deviation 0.7
-Downtimes: Total 655891.0 Min 0.0 Max 473418.0 Median 0.0 Mean 5124.1 Standard deviation 41910.5
+Sector: All (160 sites)
+Outages: Total 60.0 Min 0.0 Max 19.0 Median 0.0 Mean 0.4 Standard deviation 1.6
+Downtimes: Total 1831856.0 Min 0.0 Max 1160496.0 Median 0.0 Mean 11449.1 Standard deviation 98558.7
+
+Sites with most downtime:
+Rank  Name     Outages  Downtime
+1     Site A   19       322h21m36s
+2     Site B   2        131h30m18s
+3     Site C   2        14h4m1s
 ...
 ```
 
