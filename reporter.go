@@ -59,8 +59,13 @@ func (r Reporter) GetSiteIDs() ([]int, error) {
 // start and end of the period to query. It returns a Site object containing
 // metadata about the site, plus the number of outages in the period, and the
 // total amount of downtime in the period.
-func (r Reporter) GetDowntimes(ID int, start, end time.Time) (Site, error) {
-	stats, _, err := r.client.Checks.Stats(context.Background(), ID, start, end)
+func (r Reporter) GetDowntimes(ID int, startDate, endDate string) (Site, error) {
+	opt := &uptime.CheckStatsOptions{
+		StartDate: startDate,
+		EndDate:   endDate,
+	}
+
+	stats, _, err := r.client.Checks.Stats(context.Background(), ID, opt)
 	if err != nil {
 		return Site{}, err
 	}
@@ -74,9 +79,9 @@ func (r Reporter) GetDowntimes(ID int, start, end time.Time) (Site, error) {
 // GetDowntimesWithRetry calls GetDowntimes for the given ID. If there is an API
 // rate limit error, it sleeps for five seconds and tries again, and keeps
 // trying forever.
-func (r Reporter) GetDowntimesWithRetry(ID int, start, end time.Time) (Site, error) {
+func (r Reporter) GetDowntimesWithRetry(ID int, startDate, endDate string) (Site, error) {
 	for {
-		site, err := r.GetDowntimes(ID, start, end)
+		site, err := r.GetDowntimes(ID, startDate, endDate)
 		if err == nil {
 			return site, nil
 		}
@@ -138,7 +143,7 @@ func StatsSummary(input stats.Float64Data) (Summary, error) {
 
 // SiteFromCheck translates from an uptime.Check and uptime.CheckStats object to
 // a Site object containing the data from both objects.
-func SiteFromCheck(c uptime.Check, s uptime.CheckStats) Site {
+func SiteFromCheck(c uptime.Check, s uptime.CheckStatsResponse) Site {
 	site := Site{
 		ID:           c.PK,
 		Name:         c.Name,

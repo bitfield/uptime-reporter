@@ -27,7 +27,7 @@ func TestIntegration(t *testing.T) {
 	}
 	end := time.Now()
 	start := end.Add(-24 * time.Hour)
-	site, err := r.GetDowntimesWithRetry(IDs[0], start, end)
+	site, err := r.GetDowntimesWithRetry(IDs[0], start.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339))
 	if err != nil {
 		t.Fatal(err)
 	}

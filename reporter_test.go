@@ -71,7 +71,7 @@ func TestSiteFromCheck(t *testing.T) {
 		Address: "https://wakandanairlines.com",
 		Tags:    []string{"Travel"},
 	}
-	inputStats := uptime.CheckStats{
+	inputStats := uptime.CheckStatsResponse{
 		Totals: uptime.CheckStatsTotals{
 			Outages:      4,
 			DowntimeSecs: 117,

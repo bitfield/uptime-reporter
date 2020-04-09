@@ -10,6 +10,9 @@ import (
 
 	reporter "github.com/bitfield/uptime-reporter"
 	"github.com/montanaflynn/stats"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
 )
 
 func main() {
@@ -57,12 +60,14 @@ func printSummary(sector string, sites []reporter.Site) {
 		log.Fatal(err)
 	}
 	fmt.Printf("Outages: %s\n", outageSummary)
+	boxplot(sector, "Outages", plotter.Values(outages))
 	downtimeSummary, err := reporter.StatsSummary(downtimes)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Downtimes: %s\n", downtimeSummary)
 	fmt.Println()
+	boxplot(sector, "Downtimes", plotter.Values(downtimes))
 }
 
 func printWorst(sector string, sites []reporter.Site) {
@@ -87,4 +92,25 @@ func printWorst(sector string, sites []reporter.Site) {
 	}
 	fmt.Fprintln(w)
 	w.Flush()
+}
+
+func boxplot(sector, title string, data plotter.Values) {
+	// Create the plot and set its title and axis label.
+	p, err := plot.New()
+	if err != nil {
+		panic(err)
+	}
+	p.Title.Text = sector
+	p.Y.Label.Text = title
+
+	// Make boxes for our data and add them to the plot.
+	w := vg.Points(20)
+	b0, err := plotter.NewBoxPlot(w, 0, data)
+	if err != nil {
+		panic(err)
+	}
+	p.Add(b0)
+	if err := p.Save(3*vg.Inch, 4*vg.Inch, fmt.Sprintf("%s_%s.png", sector, title)); err != nil {
+		panic(err)
+	}
 }
