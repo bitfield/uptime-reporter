@@ -77,9 +77,10 @@ func (r Reporter) GetDowntimes(ID int, startDate, endDate string) (Site, error) 
 }
 
 // GetDowntimesWithRetry calls GetDowntimes for the given ID. If there is an API
-// rate limit error, it sleeps for five seconds and tries again, and keeps
+// rate limit error, it sleeps for a while and tries again, and keeps
 // trying forever.
 func (r Reporter) GetDowntimesWithRetry(ID int, startDate, endDate string) (Site, error) {
+	sleep := 5 * time.Second
 	for {
 		site, err := r.GetDowntimes(ID, startDate, endDate)
 		if err == nil {
@@ -88,8 +89,9 @@ func (r Reporter) GetDowntimesWithRetry(ID int, startDate, endDate string) (Site
 		if !strings.Contains(err.Error(), "API_RATE_LIMIT") {
 			return Site{}, err
 		}
-		log.Println("rate-limited; sleeping before retry")
-		time.Sleep(5 * time.Second)
+		log.Printf("rate-limited; sleeping %s before retry\n", sleep.String())
+		time.Sleep(sleep)
+		sleep *= 2
 	}
 }
 

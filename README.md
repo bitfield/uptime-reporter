@@ -38,9 +38,19 @@ My Main Website,https://example.com/,Sites,0,0
 Occasionally you may see a message that the downloader is being rate-limited by the Uptime.com API. That's okay, just wait a few seconds and it will keep trying:
 
 ```
-rate-limited; sleeping before retry
+rate-limited; sleeping 5s before retry
 My Secondary Website,https://subdomain.example.com,Sites,0,0
 ```
+
+## Resuming interrupted downloads
+
+If you have a large number of checks in your account, and something interrupts your statistics download, don't worry—you don't have to start again from scratch. Just specify the ID of the last check you successfully downloaded, as an extra parameter on the command line:
+
+```
+go run cmd/download/main.go 2019-01-01T00:00:00Z 2020-01-01T00:00:00Z 21999 |tee -a data.csv
+```
+
+The downloader will skip all the checks up to and including ID 21999, and begin downloading data from the next check onwards.
 
 ## Analysing data
 
