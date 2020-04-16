@@ -1,3 +1,4 @@
-cmd/download/*.csv
-cmd/analyse/*.png
+*.csv
+*.png
 go.sum
+.DS_Store
