@@ -77,17 +77,17 @@ func printWorst(sector string, sites []reporter.Site) {
 		max = len(sites)
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Rank\tName\tOutages\tDowntime\n")
+	fmt.Fprintf(w, "Rank\tName\tURL\tOutages\tDowntime\n")
 	rank := 1
 	for _, s := range sites {
 		if s.Outages == 0 {
 			continue
 		}
-		if rank >= 10 {
+		if rank > 10 {
 			break
 		}
 		downtime := time.Duration(s.DowntimeSecs * 1e9)
-		fmt.Fprintf(w, "%d\t%s\t%d\t%s\n", rank, s.Name, s.Outages, downtime.String())
+		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n", rank, s.Name, s.URL, s.Outages, downtime.String())
 		rank++
 	}
 	fmt.Fprintln(w)
