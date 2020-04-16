@@ -33,7 +33,7 @@ type Site struct {
 func New(APIToken string) (Reporter, error) {
 	client, err := uptime.NewClient(&uptime.Config{
 		Token:            APIToken,
-		RateMilliseconds: 2000,
+		RateMilliseconds: 8000,
 	})
 	if err != nil {
 		return Reporter{}, err
@@ -44,7 +44,7 @@ func New(APIToken string) (Reporter, error) {
 // GetSiteIDs returns a slice of check IDs, one for each check in the account
 // associated with the Reporter's API token.
 func (r Reporter) GetSiteIDs() ([]int, error) {
-	checks, err := r.client.Checks.ListAll(context.Background(), &uptime.CheckListOptions{PageSize: 1000})
+	checks, err := r.client.Checks.ListAll(context.Background(), &uptime.CheckListOptions{PageSize: 250})
 	if err != nil {
 		return []int{}, fmt.Errorf("listing all checks: %w", err)
 	}
@@ -92,6 +92,9 @@ func (r Reporter) GetDowntimesWithRetry(ID int, startDate, endDate string) (Site
 		log.Printf("rate-limited; sleeping %s before retry\n", sleep.String())
 		time.Sleep(sleep)
 		sleep *= 2
+		if sleep > 10*time.Minute {
+			sleep = 10 * time.Minute
+		}
 	}
 }
 
