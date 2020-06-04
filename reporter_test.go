@@ -11,6 +11,30 @@ import (
 	"github.com/uptime-com/rest-api-clients/golang/uptime"
 )
 
+var (
+	WakandanAirlines = reporter.Site{
+		Name:         "Wakandan Airlines",
+		URL:          "https://wakandanairlines.com",
+		Sector:       "Travel",
+		Outages:      4,
+		DowntimeSecs: 117,
+	}
+	BankofMetropolis = reporter.Site{
+		Name:         "Bank of Metropolis",
+		URL:          "https://bankofmetropolis.com",
+		Sector:       "Financial Services",
+		Outages:      1,
+		DowntimeSecs: 3,
+	}
+	DailyPlanet = reporter.Site{
+		Name:         "Daily Planet",
+		URL:          "https://dailyplanet.com",
+		Sector:       "News & Media",
+		Outages:      6,
+		DowntimeSecs: 117,
+	}
+)
+
 func TestReporter(t *testing.T) {
 	t.Parallel()
 	_, err := reporter.New("dummy API token")
@@ -93,13 +117,6 @@ func TestSiteFromCheck(t *testing.T) {
 
 func TestWriteCSV(t *testing.T) {
 	t.Parallel()
-	inputSite := reporter.Site{
-		Name:         "Wakandan Airlines",
-		URL:          "https://wakandanairlines.com",
-		Sector:       "Travel",
-		Outages:      4,
-		DowntimeSecs: 117,
-	}
 	wantFile, err := os.Open("testdata/test.csv")
 	if err != nil {
 		t.Fatal(err)
@@ -110,10 +127,9 @@ func TestWriteCSV(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := bytes.Buffer{}
-	err = reporter.WriteCSV(&got, inputSite)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_ = reporter.WriteCSV(&got, WakandanAirlines)
+	_ = reporter.WriteCSV(&got, BankofMetropolis)
+	_ = reporter.WriteCSV(&got, DailyPlanet)
 	if !bytes.Equal(want, got.Bytes()) {
 		t.Error(cmp.Diff(string(want), got.String()))
 	}
@@ -121,12 +137,31 @@ func TestWriteCSV(t *testing.T) {
 
 func TestReadCSV(t *testing.T) {
 	t.Parallel()
-	want := reporter.Site{
-		Name:         "Wakandan Airlines",
-		URL:          "https://wakandanairlines.com",
-		Sector:       "Travel",
-		Outages:      4,
-		DowntimeSecs: 117,
+	want := reporter.SiteSet{
+		WakandanAirlines,
+		BankofMetropolis,
+		DailyPlanet,
+	}
+	inFile, err := os.Open("testdata/test.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer inFile.Close()
+	got, err := reporter.ReadCSV(inFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestBySector(t *testing.T) {
+	t.Parallel()
+	want := map[string]reporter.SiteSet{
+		"Travel":             {WakandanAirlines},
+		"Financial Services": {BankofMetropolis},
+		"News & Media":       {DailyPlanet},
 	}
 	inFile, err := os.Open("testdata/test.csv")
 	if err != nil {
@@ -137,10 +172,41 @@ func TestReadCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sites) < 1 {
-		t.Fatal("want 1 site, got 0")
+	got := sites.BySector()
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
 	}
-	got := sites[0]
+}
+
+func TestSortByDowntime(t *testing.T) {
+	t.Parallel()
+	input := reporter.SiteSet{
+		WakandanAirlines,
+		BankofMetropolis,
+		DailyPlanet,
+	}
+	want := reporter.SiteSet{
+		DailyPlanet,
+		WakandanAirlines,
+		BankofMetropolis,
+	}
+	input.SortByDowntime()
+	if !cmp.Equal(want, input) {
+		t.Error(cmp.Diff(want, input))
+	}
+}
+
+func TestFilterDowntimeOver(t *testing.T) {
+	t.Parallel()
+	input := reporter.SiteSet{
+		DailyPlanet,
+		WakandanAirlines,
+		BankofMetropolis,
+	}
+	want := reporter.SiteSet{
+		BankofMetropolis,
+	}
+	got := input.FilterDowntimeOver(10)
 	if !cmp.Equal(want, got) {
 		t.Error(cmp.Diff(want, got))
 	}

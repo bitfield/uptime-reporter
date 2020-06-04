@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -183,8 +184,8 @@ func WriteCSV(output io.Writer, site Site) error {
 
 // ReadCSV reads CSV data representing a group of Sites, one per line, from the
 // given input.
-func ReadCSV(input io.Reader) ([]Site, error) {
-	var sites []Site
+func ReadCSV(input io.Reader) (SiteSet, error) {
+	var sites SiteSet
 	r := csv.NewReader(input)
 	for {
 		record, err := r.Read()
@@ -192,7 +193,7 @@ func ReadCSV(input io.Reader) ([]Site, error) {
 			break
 		}
 		if err != nil {
-			return []Site{}, err
+			return SiteSet{}, err
 		}
 		s := Site{
 			Name:   record[0],
@@ -201,15 +202,56 @@ func ReadCSV(input io.Reader) ([]Site, error) {
 		}
 		outages, err := strconv.Atoi(record[3])
 		if err != nil {
-			return []Site{}, fmt.Errorf("data line %q: %w", record, err)
+			return SiteSet{}, fmt.Errorf("data line %q: %w", record, err)
 		}
 		s.Outages = outages
 		downtime, err := strconv.ParseInt(record[4], 10, 64)
 		if err != nil {
-			return []Site{}, fmt.Errorf("data line %q: %w", record, err)
+			return SiteSet{}, fmt.Errorf("data line %q: %w", record, err)
 		}
 		s.DowntimeSecs = downtime
 		sites = append(sites, s)
 	}
 	return sites, nil
+}
+
+// SiteSet represents a slice of Sites.
+type SiteSet []Site
+
+// BySector operates on a SiteSet and returns a map of sectors to sites (that
+// is, the map key is the sector name, and the corresponding value is the
+// SiteSet of all the sites in that sector).
+func (ss SiteSet) BySector() map[string]SiteSet {
+	var sectors = map[string]SiteSet{}
+	for _, s := range ss {
+		sectors[s.Sector] = append(sectors[s.Sector], s)
+	}
+	return sectors
+}
+
+// SortByDowntime sorts the SiteSet by downtime, highest first, then by
+// outages, most outages first, and then by name alphabetically.
+func (ss SiteSet) SortByDowntime() {
+	sort.Slice(ss, func(i, j int) bool {
+		a, b := ss[i], ss[j]
+		if a.DowntimeSecs != b.DowntimeSecs {
+			return a.DowntimeSecs > b.DowntimeSecs
+		}
+		if a.Outages != b.Outages {
+			return a.Outages > b.Outages
+		}
+		return a.Name < b.Name
+	})
+}
+
+// FilterDowntimeOver returns the set of sites with less than or equal to the
+// specified amount of downtime, in seconds.
+func (ss SiteSet) FilterDowntimeOver(limit int64) SiteSet {
+	filtered := make(SiteSet, 0, len(ss))
+	for _, s := range ss {
+		if s.DowntimeSecs <= limit {
+			filtered = append(filtered, s)
+		}
+	}
+	return filtered
 }
