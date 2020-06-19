@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
 	"text/tabwriter"
 	"time"
 
@@ -15,40 +14,34 @@ import (
 	"gonum.org/v1/plot/vg"
 )
 
+var maxDowntime int64
+
 func main() {
+	if len(os.Args) > 1 {
+		limit, err := time.ParseDuration(os.Args[1])
+		if err != nil {
+			log.Fatalf("Usage: %s [MAX_DOWNTIME]", os.Args[0])
+		}
+		maxDowntime = int64(limit.Seconds())
+	}
 	sites, err := reporter.ReadCSV(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	var sectors = map[string][]reporter.Site{}
-	for _, s := range sites {
-		sectors[s.Sector] = append(sectors[s.Sector], s)
+	if maxDowntime > 0 {
+		sites = sites.FilterDowntimeOver(maxDowntime)
 	}
-	for sector, sites := range sectors {
+	for sector, sites := range sites.BySector() {
 		printSummary(sector, sites)
-		sortByDowntime(sites)
+		sites.SortByDowntime()
 		printWorst(sector, sites)
 	}
 	printSummary("All", sites)
-	sortByDowntime(sites)
+	sites.SortByDowntime()
 	printWorst("All", sites)
 }
 
-func sortByDowntime(sites []reporter.Site) {
-	sort.Slice(sites, func(i, j int) bool {
-		a, b := sites[i], sites[j]
-		if a.DowntimeSecs != b.DowntimeSecs {
-			return a.DowntimeSecs > b.DowntimeSecs
-		}
-		if a.Outages != b.Outages {
-			return a.Outages > b.Outages
-		}
-		return a.Name < b.Name
-	})
-}
-
-func printSummary(sector string, sites []reporter.Site) {
+func printSummary(sector string, sites reporter.SiteSet) {
 	var outages, downtimes stats.Float64Data
 	for _, s := range sites {
 		outages = append(outages, float64(s.Outages))
@@ -70,7 +63,7 @@ func printSummary(sector string, sites []reporter.Site) {
 	boxplot(sector, "Downtimes", plotter.Values(downtimes))
 }
 
-func printWorst(sector string, sites []reporter.Site) {
+func printWorst(sector string, sites reporter.SiteSet) {
 	fmt.Println("Sites with most downtime:")
 	max := 10
 	if len(sites) < max {

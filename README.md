@@ -75,6 +75,20 @@ Rank  Name     Outages  Downtime
 ...
 ```
 
+## Filtering excessive downtime
+
+The downtime figure for some sites may not be meaningful. For example, if you're analysing 90 days of data and a given site only existed or was only monitored for the last day of that period, it would appear to have 89 days of downtime, which is incorrect.
+
+To eliminate these outliers, you can specify a 'maximum downtime' argument to the analyser:
+
+```
+go run cmd/analyse/main.go 100h <data.csv
+```
+
+The `100h` here represents a maximum downtime of 100 hours, and sites with more downtime than this will not be included in the statistics or league tables. Try different numbers to find the best one to eliminate the noise from the dataset you're working with.
+
+You can specify the maximum downtime duration as, for example, `5h10m`, or `90s`, or any combination of units supported by [Go's `time` library](https://golang.org/pkg/time/#ParseDuration).
+
 ## Using the Go package
 
 If you want to do your own analysis, or download additional data, you can write your own Go programs which use the `uptime-reporter` library. This provides some useful functions such as a rate-limit-aware API client, CSV input and output, data types, and so on.
