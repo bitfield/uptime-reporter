@@ -31,9 +31,9 @@ type Site struct {
 
 // New takes an Uptime.com API token and returns a Reporter object which can
 // then be used to query the Uptime API.
-func New(APIToken string) (Reporter, error) {
+func New(apiToken string) (Reporter, error) {
 	client, err := uptime.NewClient(&uptime.Config{
-		Token:            APIToken,
+		Token:            apiToken,
 		RateMilliseconds: 8000,
 	})
 	if err != nil {
@@ -60,17 +60,17 @@ func (r Reporter) GetSiteIDs() ([]int, error) {
 // start and end of the period to query. It returns a Site object containing
 // metadata about the site, plus the number of outages in the period, and the
 // total amount of downtime in the period.
-func (r Reporter) GetDowntimes(ID int, startDate, endDate string) (Site, error) {
+func (r Reporter) GetDowntimes(id int, startDate, endDate string) (Site, error) {
 	opt := &uptime.CheckStatsOptions{
 		StartDate: startDate,
 		EndDate:   endDate,
 	}
 
-	stats, _, err := r.client.Checks.Stats(context.Background(), ID, opt)
+	stats, _, err := r.client.Checks.Stats(context.Background(), id, opt)
 	if err != nil {
 		return Site{}, err
 	}
-	check, _, err := r.client.Checks.Get(context.Background(), ID)
+	check, _, err := r.client.Checks.Get(context.Background(), id)
 	if err != nil {
 		return Site{}, err
 	}
@@ -80,10 +80,10 @@ func (r Reporter) GetDowntimes(ID int, startDate, endDate string) (Site, error) 
 // GetDowntimesWithRetry calls GetDowntimes for the given ID. If there is an API
 // rate limit error, it sleeps for a while and tries again, and keeps
 // trying forever.
-func (r Reporter) GetDowntimesWithRetry(ID int, startDate, endDate string) (Site, error) {
+func (r Reporter) GetDowntimesWithRetry(id int, startDate, endDate string) (Site, error) {
 	sleep := 5 * time.Second
 	for {
-		site, err := r.GetDowntimes(ID, startDate, endDate)
+		site, err := r.GetDowntimes(id, startDate, endDate)
 		if err == nil {
 			return site, nil
 		}
