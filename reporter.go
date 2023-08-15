@@ -122,6 +122,9 @@ func StatsSummary(input stats.Float64Data) (Summary, error) {
 		return Summary{}, err
 	}
 	dev, err := stats.StandardDeviation(input)
+	if err != nil {
+		return Summary{}, err
+	}
 	min, err := stats.Min(input)
 	if err != nil {
 		return Summary{}, err
@@ -144,7 +147,6 @@ func StatsSummary(input stats.Float64Data) (Summary, error) {
 		Median: quartiles.Q2,
 		Q3:     quartiles.Q3,
 	}, nil
-
 }
 
 // SiteFromCheck translates from an uptime.Check and uptime.CheckStats object to
@@ -222,7 +224,7 @@ type SiteSet []Site
 // is, the map key is the sector name, and the corresponding value is the
 // SiteSet of all the sites in that sector).
 func (ss SiteSet) BySector() map[string]SiteSet {
-	var sectors = map[string]SiteSet{}
+	sectors := map[string]SiteSet{}
 	for _, s := range ss {
 		sectors[s.Sector] = append(sectors[s.Sector], s)
 	}

@@ -65,10 +65,6 @@ func printSummary(sector string, sites reporter.SiteSet) {
 
 func printWorst(sector string, sites reporter.SiteSet) {
 	fmt.Println("Sites with most downtime:")
-	max := 10
-	if len(sites) < max {
-		max = len(sites)
-	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "Rank\tName\tURL\tOutages\tDowntime\n")
 	rank := 1

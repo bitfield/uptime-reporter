@@ -1,9 +1,9 @@
+//go:build integration
 // +build integration
 
 package reporter_test
 
 import (
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -23,7 +23,7 @@ func TestIntegration(t *testing.T) {
 	}
 	IDs, err := r.GetSiteIDs()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	end := time.Now()
 	start := end.Add(-24 * time.Hour)

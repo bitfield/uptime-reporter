@@ -2,7 +2,7 @@ package reporter_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -122,7 +122,7 @@ func TestWriteCSV(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer wantFile.Close()
-	want, err := ioutil.ReadAll(wantFile)
+	want, err := io.ReadAll(wantFile)
 	if err != nil {
 		t.Fatal(err)
 	}
